@@ -1,11 +1,11 @@
 # Phase 2: Search Engine Content Script & Badge UI Injection
 
-## 🎯 Objectives
+## Objectives
 Inject subtle, non-intrusive AI detection badges directly into search results pages (Google Search, Bing Search, DuckDuckGo) with interactive detail tooltips.
 
 ---
 
-## 📋 Task Checklist
+## Task Checklist
 
 - [x] **1. Develop DOM Parser in `content.js`**
   - **Google Search**: Target result containers (`#rso .g`, `div.MjjYud`, `div.g`), extract link URL, title header `h3`, snippet text (`div.VwiC3b`).
@@ -14,7 +14,7 @@ Inject subtle, non-intrusive AI detection badges directly into search results pa
   - Implement `MutationObserver` to handle dynamic search results loading, pagination, and AJAX query updates.
 
 - [x] **2. Implement Subtle Badge Component (`content.js` & `content.css`)**
-  - Design compact inline pill badge (e.g. `🤖 14% AI`).
+  - Design compact inline pill badge (e.g. `14% AI`).
   - Color palette:
     - **0 - 30% AI**: Soft Emerald (`#10b981` bg / `#047857` text) - Low AI likelihood.
     - **31 - 65% AI**: Warm Amber (`#f59e0b` bg / `#b45309` text) - Moderate AI likelihood.
@@ -34,7 +34,7 @@ Inject subtle, non-intrusive AI detection badges directly into search results pa
 
 ---
 
-## 🧪 Verification Criteria
+## Verification Criteria
 - [x] Badges render next to every result title on Google Search without cluttering the layout.
 - [x] Hovering over badge displays clean tooltip popover with breakdown details.
 - [x] No Javascript errors on standard search result pages.

@@ -1,11 +1,11 @@
 # Phase 4: Sleek Extension Popup UI & Live Playground
 
-## 🎯 Objectives
+## Objectives
 Build a modern, glassmorphism extension popup interface (`popup.html`, `popup.css`, `popup.js`) with control switches, live text/URL playground, cache stats, and API settings.
 
 ---
 
-## 📋 Task Checklist
+## Task Checklist
 
 - [x] **1. Extension Popup UI Design (`popup.html`, `popup.css`)**
   - Dark mode aesthetic, vibrant accents, smooth micro-interactions.
@@ -21,7 +21,7 @@ Build a modern, glassmorphism extension popup interface (`popup.html`, `popup.cs
 
 ---
 
-## 🧪 Verification Criteria
+## Verification Criteria
 - [x] Extension popup opens cleanly when clicking toolbar icon.
 - [x] Master switch immediately toggles search engine badges ON/OFF.
 - [x] Playground tab scores pasted text accurately with animated visual gauge.

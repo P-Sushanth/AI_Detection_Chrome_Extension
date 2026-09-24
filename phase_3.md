@@ -1,11 +1,11 @@
 # Phase 3: Background Service Worker & Storage Caching
 
-## 🎯 Objectives
+## Objectives
 Build the background service worker (`background.js`) to handle persistent result caching, message relaying, background page pre-fetching, and optional API integration.
 
 ---
 
-## 📋 Task Checklist
+## Task Checklist
 
 - [x] **1. Develop Service Worker (`background.js`)**
   - Implement MV3 service worker event listeners (`onInstalled`, `onMessage`).
@@ -25,6 +25,6 @@ Build the background service worker (`background.js`) to handle persistent resul
 
 ---
 
-## 🧪 Verification Criteria
+## Verification Criteria
 - [x] Repeat searches read scores directly from `chrome.storage.local` with 0ms calculation overhead.
 - [x] Service worker wakes up on demand without memory leaks or crash warnings in Chrome DevTools.

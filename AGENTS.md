@@ -4,12 +4,12 @@ Welcome! This document outlines the project architecture, design guidelines, cod
 
 ---
 
-## 🎯 Project Vision
+## Project Vision
 A lightweight, instant, subtle Chrome Extension (Manifest V3) that inspects search engine result pages (Google, Bing, DuckDuckGo) and places a subtle inline badge next to each result title indicating the estimated percentage of AI-generated content on that website.
 
 ### Core Pillars
 1. **Instant Speed (< 20ms)**: Uses a pure JavaScript multi-signal statistical & linguistic heuristic engine running locally in the content script.
-2. **Subtle & Premium UI**: Color-coded badges (`🤖 14% AI`) that blend seamlessly into Google/Bing dark & light themes with hover tooltips detailing signal breakdowns.
+2. **Subtle & Premium UI**: Color-coded badges (`14% AI`) that blend seamlessly into Google/Bing dark & light themes with hover tooltips detailing signal breakdowns.
 3. **Robust Caching**: Background service worker caches results in `chrome.storage.local` for 0ms repeat query rendering.
 4. **Developer-Friendly Structure**: Modular design divided into self-contained execution phases.
 

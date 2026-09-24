@@ -1,6 +1,6 @@
 # Phase 1: Core Detection Engine & Manifest Setup
 
-## 🎯 Objectives
+## Objectives
 Build the core foundation of the Chrome Extension:
 1. Define the Manifest V3 structure (`manifest.json`) with necessary permissions and rules.
 2. Develop the standalone pure JS AI Detection Engine (`detector.js`).
@@ -9,7 +9,7 @@ Build the core foundation of the Chrome Extension:
 
 ---
 
-## 📋 Task Checklist
+## Task Checklist
 
 - [x] **1. Create `manifest.json`**
   - Schema version: `3`
@@ -33,7 +33,7 @@ Build the core foundation of the Chrome Extension:
 
 ---
 
-## 🧪 Verification Criteria
+## Verification Criteria
 - [x] `detector.js` runs in under 15ms per snippet (verified: ~0.2ms - 0.4ms).
 - [x] `test_runner.html` opens cleanly in browser and passes test cases with expected score differentiation (Human 18%, AI 75%).
 - [x] Extension manifest parses without warnings in `chrome://extensions`.

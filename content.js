@@ -193,7 +193,7 @@
       badge.classList.add('ai-badge-low');
     }
 
-    badge.textContent = `🤖 ${result.score}% AI`;
+    badge.textContent = `${result.score}% AI`;
     badge.setAttribute('title', `AI Likelihood: ${result.score}% (${result.label}). Hover for breakdown.`);
 
     // Attach interactive hover tooltip handlers
