@@ -18,7 +18,6 @@
       hostRegex: /google\.[a-z.]+/i,
       cardSelector: '#rso .g, div.MjjYud, div.g, div.WwSpTe',
       titleSelector: 'h3',
-      linkSelector: 'a[href]',
       snippetSelector: 'div.VwiC3b, div.yXK7bf, div.IsZvec, .GIW4sq, div.N54UYe'
     },
     {
@@ -26,7 +25,6 @@
       hostRegex: /bing\.com/i,
       cardSelector: '#b_results .b_algo',
       titleSelector: 'h2 a',
-      linkSelector: 'h2 a',
       snippetSelector: '.b_caption p, .b_snippet'
     },
     {
@@ -34,7 +32,6 @@
       hostRegex: /duckduckgo\.com/i,
       cardSelector: '.react-results--main article, li[data-layout="organic"]',
       titleSelector: 'h2 a, a[data-testid="result-title-a"]',
-      linkSelector: 'h2 a, a[data-testid="result-title-a"]',
       snippetSelector: 'div[data-result="snippet"], .oglV270w_L'
     }
   ];
@@ -64,7 +61,7 @@
         }
       });
     } else {
-      // Fallback for standalone context
+      // Fallback for standalone/content test context
       scanPage();
       setupMutationObserver();
     }
@@ -94,18 +91,18 @@
   }
 
   /**
-   * Process an individual search result card with caching
+   * Process an individual search result card
    */
   function processSearchCard(card, config) {
+    // Prevent double processing
     processedElements.add(card);
 
     const titleEl = card.querySelector(config.titleSelector);
     if (!titleEl) return;
 
+    // Check if badge already injected inside or beside title
     if (card.querySelector('.ai-detector-badge')) return;
 
-    const linkEl = card.querySelector(config.linkSelector) || titleEl.closest('a');
-    const resultUrl = linkEl ? linkEl.getAttribute('href') : '';
     const snippetEl = card.querySelector(config.snippetSelector);
     const titleText = titleEl.textContent ? titleEl.textContent.trim() : '';
     const snippetText = snippetEl ? snippetEl.textContent.trim() : '';
@@ -113,50 +110,64 @@
 
     if (!combinedText || combinedText.length < 10) return;
 
-    // Check Chrome extension storage cache via background service worker
-    if (resultUrl && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      chrome.runtime.sendMessage({ action: 'GET_SCORE', url: resultUrl }, (response) => {
-        if (chrome.runtime.lastError) {
-          // Compute locally if message fails
-          computeAndInject(combinedText, resultUrl, titleEl);
-          return;
-        }
-
-        if (response && response.cached && response.result) {
-          // Cache hit (0ms latency!)
-          injectBadge(response.result, titleEl);
-        } else {
-          // Cache miss: Compute and save to cache
-          computeAndInject(combinedText, resultUrl, titleEl);
-        }
-      });
-    } else {
-      // Direct local compute fallback
-      computeAndInject(combinedText, resultUrl, titleEl);
+    // Find result link URL
+    let linkUrl = '';
+    const linkEl = titleEl.tagName.toLowerCase() === 'a' ? titleEl : card.querySelector('a[href]');
+    if (linkEl && linkEl.href) {
+      linkUrl = linkEl.href;
     }
+
+    // Check background cache first for 0ms repeat score rendering
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      try {
+        chrome.runtime.sendMessage(
+          { action: 'GET_CACHED_SCORE', url: linkUrl, textKey: combinedText },
+          (res) => {
+            if (chrome.runtime.lastError || !res || !res.found || !res.result) {
+              runInlineAnalysisAndInject(card, titleEl, combinedText, linkUrl);
+            } else {
+              injectBadge(card, titleEl, res.result);
+            }
+          }
+        );
+        return;
+      } catch (e) {
+        // Fallback to local synchronous analysis if message fails
+      }
+    }
+
+    runInlineAnalysisAndInject(card, titleEl, combinedText, linkUrl);
   }
 
   /**
-   * Computes score using AIDetector engine and saves to background cache
+   * Run local NLP detection engine and cache result in background
    */
-  function computeAndInject(text, url, titleEl) {
+  function runInlineAnalysisAndInject(card, titleEl, text, linkUrl) {
     if (typeof AIDetector === 'undefined') return;
     const result = AIDetector.analyze(text);
-    injectBadge(result, titleEl);
+    injectBadge(card, titleEl, result);
 
-    // Save to cache via background worker
-    if (url && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      chrome.runtime.sendMessage({ action: 'SAVE_SCORE', url: url, result: result }, () => {
-        if (chrome.runtime.lastError) { /* ignore silent error */ }
-      });
+    // Save result to background cache asynchronously
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      try {
+        chrome.runtime.sendMessage({
+          action: 'SAVE_SCORE',
+          url: linkUrl,
+          textKey: text,
+          result: result
+        });
+      } catch (e) {
+        // Ignore cache save error
+      }
     }
   }
 
   /**
-   * Injects badge element next to title header
+   * Inject badge element into search card DOM
    */
-  function injectBadge(result, titleEl) {
-    if (!titleEl || titleEl.querySelector('.ai-detector-badge')) return;
+  function injectBadge(card, titleEl, result) {
+    if (card.querySelector('.ai-detector-badge')) return;
+
     const badgeEl = createBadgeElement(result);
 
     if (titleEl.tagName.toLowerCase() === 'h3' || titleEl.tagName.toLowerCase() === 'h2') {
@@ -173,6 +184,7 @@
     const badge = document.createElement('span');
     badge.className = 'ai-detector-badge';
 
+    // Color theme class based on AI score
     if (result.score >= 65) {
       badge.classList.add('ai-badge-high');
     } else if (result.score >= 31) {
@@ -184,6 +196,7 @@
     badge.textContent = `🤖 ${result.score}% AI`;
     badge.setAttribute('title', `AI Likelihood: ${result.score}% (${result.label}). Hover for breakdown.`);
 
+    // Attach interactive hover tooltip handlers
     badge.addEventListener('mouseenter', (e) => showTooltip(e, result));
     badge.addEventListener('mouseleave', () => hideTooltip());
 
@@ -194,25 +207,27 @@
    * Shows floating hover popover card
    */
   function showTooltip(event, result) {
-    hideTooltip();
+    hideTooltip(); // Clear existing tooltip
 
     const tooltip = document.createElement('div');
     tooltip.className = 'ai-detector-tooltip';
 
+    // Header
     const header = document.createElement('div');
     header.className = 'ai-tooltip-header';
-    
+
     const titleSpan = document.createElement('span');
     titleSpan.textContent = `AI Content Breakdown`;
-    
+
     const labelSpan = document.createElement('span');
     labelSpan.style.color = result.score >= 65 ? '#c084fc' : (result.score >= 31 ? '#fbbf24' : '#34d399');
     labelSpan.textContent = `${result.score}% (${result.label})`;
-    
+
     header.appendChild(titleSpan);
     header.appendChild(labelSpan);
     tooltip.appendChild(header);
 
+    // Progress Bar
     const barBg = document.createElement('div');
     barBg.className = 'ai-tooltip-bar-bg';
     const barFill = document.createElement('div');
@@ -222,6 +237,7 @@
     barBg.appendChild(barFill);
     tooltip.appendChild(barBg);
 
+    // Metric Breakdown Grid
     const grid = document.createElement('div');
     grid.className = 'ai-tooltip-signals';
 
@@ -235,11 +251,11 @@
     signalsData.forEach(item => {
       const box = document.createElement('div');
       box.className = 'ai-tooltip-signal-item';
-      
+
       const lbl = document.createElement('div');
       lbl.className = 'ai-tooltip-signal-lbl';
       lbl.textContent = item.lbl;
-      
+
       const val = document.createElement('div');
       val.className = 'ai-tooltip-signal-val';
       val.textContent = item.val;
@@ -251,6 +267,7 @@
 
     tooltip.appendChild(grid);
 
+    // Top Phrases
     if (result.detectedPhrases && result.detectedPhrases.length > 0) {
       const phraseHeader = document.createElement('div');
       phraseHeader.style.fontSize = '10px';
@@ -273,9 +290,10 @@
     document.body.appendChild(tooltip);
     activeTooltip = tooltip;
 
+    // Position tooltip near badge
     const rect = event.target.getBoundingClientRect();
     const tooltipHeight = tooltip.offsetHeight || 160;
-    
+
     let top = rect.bottom + 6;
     if (top + tooltipHeight > window.innerHeight) {
       top = rect.top - tooltipHeight - 6;
@@ -294,6 +312,9 @@
     });
   }
 
+  /**
+   * Hides floating hover tooltip
+   */
   function hideTooltip() {
     if (activeTooltip) {
       activeTooltip.remove();
@@ -301,11 +322,17 @@
     }
   }
 
+  /**
+   * Removes all injected badges from page
+   */
   function removeBadges() {
     document.querySelectorAll('.ai-detector-badge').forEach(b => b.remove());
     hideTooltip();
   }
 
+  /**
+   * Dynamic MutationObserver to catch AJAX search updates & infinite scrolling
+   */
   function setupMutationObserver() {
     const observer = new MutationObserver((mutations) => {
       let shouldScan = false;
@@ -323,6 +350,7 @@
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
+  // Run initial scan
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

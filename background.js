@@ -1,55 +1,73 @@
 /**
- * Background Service Worker - AI Content Detector
- * Manages persistent storage caching, messaging bus, LRU eviction, and extension state.
+ * Background Service Worker - Cache Manager & API Relay
+ * AI Content Detector Chrome Extension (MV3)
  */
 
+// Default Configuration Settings
 const DEFAULT_SETTINGS = {
   enabled: true,
-  sensitivity: 'medium',
+  sensitivity: 'medium', // 'low', 'medium', 'high'
   cacheLimit: 5000,
-  cacheStats: { hits: 0, misses: 0 }
+  apiEndpoint: '',
+  apiKey: '',
+  useApiRelay: false,
+  prefetchFullPage: false
 };
 
-// Initialize extension default settings on install
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get(['enabled', 'sensitivity', 'cacheLimit', 'cacheStats'], (res) => {
-    const initialStorage = {};
-    if (res.enabled === undefined) initialStorage.enabled = DEFAULT_SETTINGS.enabled;
-    if (res.sensitivity === undefined) initialStorage.sensitivity = DEFAULT_SETTINGS.sensitivity;
-    if (res.cacheLimit === undefined) initialStorage.cacheLimit = DEFAULT_SETTINGS.cacheLimit;
-    if (res.cacheStats === undefined) initialStorage.cacheStats = DEFAULT_SETTINGS.cacheStats;
-    if (res.urlCache === undefined) initialStorage.urlCache = {};
+/**
+ * Service Worker Installation & Setup
+ */
+chrome.runtime.onInstalled.addListener(async () => {
+  const current = await chrome.storage.local.get(null);
+  const newStorage = {};
 
-    chrome.storage.local.set(initialStorage, () => {
-      console.log('[AI Detector Service Worker] Initialized default settings.');
-    });
-  });
+  // Merge default settings without overwriting existing user preferences
+  for (const [key, val] of Object.entries(DEFAULT_SETTINGS)) {
+    if (current[key] === undefined) {
+      newStorage[key] = val;
+    }
+  }
+
+  if (current.cache === undefined) {
+    newStorage.cache = {};
+  }
+
+  if (Object.keys(newStorage).length > 0) {
+    await chrome.storage.local.set(newStorage);
+  }
+  console.log('[AI Content Detector SW] Initialized storage default settings');
 });
 
-// Handle incoming messages from Content Script and Extension Popup
+/**
+ * Message Handler Interface for Content Scripts & Popup
+ */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (!request || !request.action) return false;
 
   switch (request.action) {
-    case 'GET_SCORE':
-      handleGetScore(request.url, sendResponse);
+    case 'GET_CACHED_SCORE':
+      handleGetCachedScore(request, sendResponse);
       return true; // Async response
 
     case 'SAVE_SCORE':
-      handleSaveScore(request.url, request.result, sendResponse);
-      return true; // Async response
+      handleSaveScore(request, sendResponse);
+      return true;
 
     case 'CLEAR_CACHE':
       handleClearCache(sendResponse);
-      return true; // Async response
+      return true;
 
-    case 'GET_STATS':
-      handleGetStats(sendResponse);
-      return true; // Async response
+    case 'GET_CACHE_STATS':
+      handleGetCacheStats(sendResponse);
+      return true;
 
-    case 'PREFETCH_PAGE':
-      handlePrefetchPage(request.url, sendResponse);
-      return true; // Async response
+    case 'FETCH_AND_ANALYZE':
+      handleFetchAndAnalyze(request, sendResponse);
+      return true;
+
+    case 'API_RELAY_ANALYZE':
+      handleApiRelayAnalyze(request, sendResponse);
+      return true;
 
     default:
       sendResponse({ status: 'unknown_action' });
@@ -58,137 +76,198 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 /**
- * Retrieves cached score for a specific URL
+ * Retrieves cached score by URL or snippet text hash
  */
-function handleGetScore(url, sendResponse) {
-  if (!url) {
-    sendResponse({ cached: false });
-    return;
-  }
+async function handleGetCachedScore(req, sendResponse) {
+  try {
+    const { url, textKey } = req;
+    const { cache = {} } = await chrome.storage.local.get(['cache']);
 
-  const cacheKey = normalizeUrl(url);
+    const key = url || textKey;
+    if (key && cache[key]) {
+      // Update hit count and timestamp for LRU tracking
+      cache[key].timestamp = Date.now();
+      cache[key].hits = (cache[key].hits || 0) + 1;
+      await chrome.storage.local.set({ cache });
 
-  chrome.storage.local.get(['urlCache', 'cacheStats'], (res) => {
-    const urlCache = res.urlCache || {};
-    const stats = res.cacheStats || { hits: 0, misses: 0 };
-
-    if (urlCache[cacheKey]) {
-      // Cache Hit
-      stats.hits = (stats.hits || 0) + 1;
-      // Update last accessed timestamp for LRU
-      urlCache[cacheKey].lastAccessed = Date.now();
-
-      chrome.storage.local.set({ urlCache, cacheStats: stats }, () => {
-        sendResponse({ cached: true, result: urlCache[cacheKey].data });
-      });
-    } else {
-      // Cache Miss
-      stats.misses = (stats.misses || 0) + 1;
-      chrome.storage.local.set({ cacheStats: stats }, () => {
-        sendResponse({ cached: false });
-      });
+      sendResponse({ found: true, result: cache[key].result, fromCache: true });
+      return;
     }
-  });
+
+    sendResponse({ found: false });
+  } catch (err) {
+    console.error('[AI Detector SW] Error getting cache:', err);
+    sendResponse({ found: false, error: err.message });
+  }
 }
 
 /**
- * Saves URL analysis result to cache with LRU eviction protection
+ * Saves analysis result into persistent chrome.storage.local with LRU eviction
  */
-function handleSaveScore(url, result, sendResponse) {
-  if (!url || !result) {
-    sendResponse({ status: 'invalid_data' });
-    return;
-  }
+async function handleSaveScore(req, sendResponse) {
+  try {
+    const { url, textKey, result } = req;
+    const key = url || textKey;
 
-  const cacheKey = normalizeUrl(url);
+    if (!key || !result) {
+      sendResponse({ success: false, reason: 'Invalid parameters' });
+      return;
+    }
 
-  chrome.storage.local.get(['urlCache', 'cacheLimit'], (res) => {
-    let urlCache = res.urlCache || {};
-    const limit = res.cacheLimit || DEFAULT_SETTINGS.cacheLimit;
+    const { cache = {}, cacheLimit = DEFAULT_SETTINGS.cacheLimit } = await chrome.storage.local.get(['cache', 'cacheLimit']);
 
-    // Enforce LRU eviction if cache exceeds capacity
-    const keys = Object.keys(urlCache);
-    if (keys.length >= limit) {
-      // Sort keys by lastAccessed timestamp ascending and purge oldest 10%
-      const sortedKeys = keys.sort((a, b) => (urlCache[a].lastAccessed || 0) - (urlCache[b].lastAccessed || 0));
-      const purgeCount = Math.max(1, Math.floor(limit * 0.1));
-      for (let i = 0; i < purgeCount; i++) {
-        delete urlCache[sortedKeys[i]];
+    // Store entry with LRU metadata
+    cache[key] = {
+      result,
+      timestamp: Date.now(),
+      hits: (cache[key] ? cache[key].hits : 0) + 1
+    };
+
+    // LRU Eviction check
+    const keys = Object.keys(cache);
+    if (keys.length > cacheLimit) {
+      // Sort keys by timestamp ascending (oldest first)
+      const sortedKeys = keys.sort((a, b) => cache[a].timestamp - cache[b].timestamp);
+      const itemsToRemove = keys.length - cacheLimit;
+      for (let i = 0; i < itemsToRemove; i++) {
+        delete cache[sortedKeys[i]];
       }
     }
 
-    urlCache[cacheKey] = {
-      data: result,
-      timestamp: Date.now(),
-      lastAccessed: Date.now()
+    await chrome.storage.local.set({ cache });
+    sendResponse({ success: true, cacheCount: Object.keys(cache).length });
+  } catch (err) {
+    console.error('[AI Detector SW] Error saving cache:', err);
+    sendResponse({ success: false, error: err.message });
+  }
+}
+
+/**
+ * Clears persistent cache
+ */
+async function handleClearCache(sendResponse) {
+  try {
+    await chrome.storage.local.set({ cache: {} });
+    sendResponse({ success: true, message: 'Cache cleared' });
+  } catch (err) {
+    sendResponse({ success: false, error: err.message });
+  }
+}
+
+/**
+ * Calculates cache statistics
+ */
+async function handleGetCacheStats(sendResponse) {
+  try {
+    const { cache = {} } = await chrome.storage.local.get(['cache']);
+    const keys = Object.keys(cache);
+    let totalHits = 0;
+    keys.forEach(k => { totalHits += (cache[k].hits || 0); });
+
+    sendResponse({
+      count: keys.length,
+      totalHits,
+      bytesUsed: JSON.stringify(cache).length
+    });
+  } catch (err) {
+    sendResponse({ count: 0, totalHits: 0, error: err.message });
+  }
+}
+
+/**
+ * Background fetch and hydration of lightweight page content
+ */
+async function handleFetchAndAnalyze(req, sendResponse) {
+  try {
+    const { url } = req;
+    if (!url || !url.startsWith('http')) {
+      sendResponse({ success: false, reason: 'Invalid URL' });
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'Accept': 'text/html' }
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      sendResponse({ success: false, reason: `HTTP ${response.status}` });
+      return;
+    }
+
+    const htmlText = await response.text();
+    // Extract main paragraph text or meta description from HTML
+    const extractedText = extractTextFromHtml(htmlText);
+
+    if (!extractedText || extractedText.length < 50) {
+      sendResponse({ success: false, reason: 'Insufficient text extracted' });
+      return;
+    }
+
+    // Import detector in service worker or run heuristic calculation
+    if (typeof AIDetector !== 'undefined') {
+      const result = AIDetector.analyze(extractedText);
+      await handleSaveScore({ url, result }, () => {});
+      sendResponse({ success: true, result, extractedLength: extractedText.length });
+    } else {
+      sendResponse({ success: false, reason: 'AIDetector engine not available in SW context' });
+    }
+  } catch (err) {
+    sendResponse({ success: false, error: err.message });
+  }
+}
+
+/**
+ * Utility to extract clean plain text from raw HTML string
+ */
+function extractTextFromHtml(html) {
+  // Simple regex parser for background SW (no DOM available in SW context)
+  const metaDescMatch = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i);
+  let metaDesc = metaDescMatch ? metaDescMatch[1] : '';
+
+  // Clean script and style tags
+  let cleaned = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+                    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ');
+
+  // Extract paragraph texts
+  const pMatches = cleaned.match(/<p\b[^>]*>(.*?)<\/p>/gi) || [];
+  const pTexts = pMatches.map(p => p.replace(/<[^>]+>/g, '').trim()).filter(t => t.length > 20);
+
+  const combined = [metaDesc, ...pTexts.slice(0, 5)].join(' ').trim();
+  return combined;
+}
+
+/**
+ * Optional API Relay Handler (e.g. Gemini / Custom AI API)
+ */
+async function handleApiRelayAnalyze(req, sendResponse) {
+  try {
+    const { apiKey, apiEndpoint } = await chrome.storage.local.get(['apiKey', 'apiEndpoint']);
+
+    if (!apiKey || !apiEndpoint) {
+      sendResponse({ success: false, reason: 'API Key or Endpoint not configured' });
+      return;
+    }
+
+    const payload = {
+      contents: [{
+        parts: [{ text: `Analyze the following text for AI probability (0-100%):\n"${req.text}"` }]
+      }]
     };
 
-    chrome.storage.local.set({ urlCache }, () => {
-      sendResponse({ status: 'success', cachedCount: Object.keys(urlCache).length });
+    const response = await fetch(`${apiEndpoint}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-  });
-}
 
-/**
- * Clears cached score entries
- */
-function handleClearCache(sendResponse) {
-  chrome.storage.local.set({ urlCache: {}, cacheStats: { hits: 0, misses: 0 } }, () => {
-    sendResponse({ status: 'success' });
-  });
-}
-
-/**
- * Returns cache performance statistics
- */
-function handleGetStats(sendResponse) {
-  chrome.storage.local.get(['urlCache', 'cacheStats'], (res) => {
-    const urlCache = res.urlCache || {};
-    const stats = res.cacheStats || { hits: 0, misses: 0 };
-    sendResponse({
-      cachedUrlsCount: Object.keys(urlCache).length,
-      hits: stats.hits || 0,
-      misses: stats.misses || 0
-    });
-  });
-}
-
-/**
- * Lightweight background fetch for snippet expansion
- */
-function handlePrefetchPage(url, sendResponse) {
-  if (!url || !url.startsWith('http')) {
-    sendResponse({ status: 'error', message: 'Invalid URL' });
-    return;
-  }
-
-  fetch(url, { method: 'GET', headers: { 'Accept': 'text/html' } })
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.text();
-    })
-    .then(html => {
-      // Extract text content from body paragraphs
-      const textMatch = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-                            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-                            .replace(/<[^>]+>/g, ' ')
-                            .replace(/\s+/g, ' ')
-                            .trim();
-      sendResponse({ status: 'success', text: textMatch.slice(0, 3000) });
-    })
-    .catch(err => {
-      sendResponse({ status: 'error', message: err.message });
-    });
-}
-
-/**
- * Normalizes URL keys for cache lookup
- */
-function normalizeUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return `${parsed.hostname}${parsed.pathname}`.toLowerCase();
-  } catch (e) {
-    return String(url).trim().toLowerCase();
+    const data = await response.json();
+    sendResponse({ success: true, apiData: data });
+  } catch (err) {
+    sendResponse({ success: false, error: err.message });
   }
 }

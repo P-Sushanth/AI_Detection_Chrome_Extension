@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Content Detector Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon">🤖</div>
+        <div class="brand-info">
+          <h1>AI Content Detector</h1>
+          <span class="version-tag">v1.0.0</span>
+        </div>
+      </div>
+      <label class="switch" title="Master Enable/Disable">
+        <input type="checkbox" id="masterToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="tab-settings">
+        <span>⚙️ Settings</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-playground">
+        <span>🧪 Playground</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-api">
+        <span>🔑 API &amp; Advanced</span>
+      </button>
+    </nav>
+
+    <!-- Main Content Body -->
+    <main class="tab-content">
+      <!-- Tab 1: Settings -->
+      <section id="tab-settings" class="tab-pane active">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Detection Sensitivity</span>
+            <span class="badge-hint" id="sensitivityHint">Medium</span>
+          </div>
+          <p class="card-desc">Adjust tolerance threshold for AI marker detection on search results.</p>
+          <div class="segmented-control">
+            <button class="segment-btn" data-sensitivity="low">Permissive</button>
+            <button class="segment-btn active" data-sensitivity="medium">Balanced</button>
+            <button class="segment-btn" data-sensitivity="high">Strict</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Badge Display</span>
+          </div>
+          <div class="setting-row">
+            <span>Show Icon in Badges</span>
+            <label class="switch small">
+              <input type="checkbox" id="showIconToggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span>Detailed Hover Tooltips</span>
+            <label class="switch small">
+              <input type="checkbox" id="showTooltipToggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Cache Manager</span>
+            <span class="cache-badge" id="cacheCountBadge">0 Cached</span>
+          </div>
+          <p class="card-desc">Persistent local cache guarantees 0ms latency on repeated search engine queries.</p>
+          <div class="cache-stats-row">
+            <div>
+              <div class="stat-label">Cache Memory</div>
+              <div class="stat-val" id="cacheMemoryVal">0 KB</div>
+            </div>
+            <div>
+              <div class="stat-label">Cache Hits</div>
+              <div class="stat-val" id="cacheHitsVal">0</div>
+            </div>
+            <button class="btn-secondary" id="clearCacheBtn">Clear Cache</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 2: Playground -->
+      <section id="tab-playground" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Live Text Analyzer</span>
+            <span class="speed-tag" id="pgSpeedTag">0ms</span>
+          </div>
+          <textarea id="pgTextarea" placeholder="Paste snippet or text to inspect AI probability live..."></textarea>
+          
+          <div class="gauge-container">
+            <div class="gauge-header">
+              <span>AI Probability</span>
+              <span class="score-label" id="pgScoreText">0% (Low)</span>
+            </div>
+            <div class="gauge-bar-bg">
+              <div class="gauge-bar-fill" id="pgScoreFill"></div>
+            </div>
+
+            <div class="signals-grid">
+              <div class="signal-item">
+                <span class="sig-name">Lexical</span>
+                <span class="sig-val" id="pgLex">0/100</span>
+              </div>
+              <div class="signal-item">
+                <span class="sig-name">Burstiness</span>
+                <span class="sig-val" id="pgBst">0/100</span>
+              </div>
+              <div class="signal-item">
+                <span class="sig-name">Vocab</span>
+                <span class="sig-val" id="pgVoc">0/100</span>
+              </div>
+              <div class="signal-item">
+                <span class="sig-name">Structure</span>
+                <span class="sig-val" id="pgStr">0/100</span>
+              </div>
+            </div>
+
+            <div class="phrases-section">
+              <div class="phrases-title">Detected AI Markers:</div>
+              <div class="phrases-tags" id="pgPhrasesTags">
+                <span class="no-phrases">None detected</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 3: API & Advanced -->
+      <section id="tab-api" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Server API Integration</span>
+          </div>
+          <p class="card-desc">Optionally relay queries to an external LLM/Gemini endpoint for deep verification.</p>
+          
+          <div class="setting-row">
+            <span>Enable API Relay</span>
+            <label class="switch small">
+              <input type="checkbox" id="apiRelayToggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="input-group">
+            <label for="apiKeyInput">Gemini API Key</label>
+            <input type="password" id="apiKeyInput" placeholder="AIzaSy...">
+          </div>
+
+          <div class="input-group">
+            <label for="apiEndpointInput">API Endpoint URL</label>
+            <input type="text" id="apiEndpointInput" placeholder="https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Background Hydration</span>
+          </div>
+          <div class="setting-row">
+            <span>Background Page Pre-fetch</span>
+            <label class="switch small">
+              <input type="checkbox" id="prefetchToggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <p class="card-desc" style="margin-top: 6px;">Pre-fetches full page HTML head paragraphs asynchronously in background service worker for enhanced score precision.</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>AI Content Detector Extension</span>
+      <span class="status-indicator">
+        <span class="status-dot"></span> Active
+      </span>
+    </footer>
+  </div>
+
+  <script src="detector.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
