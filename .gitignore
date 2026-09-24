@@ -1,0 +1,16 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IDE & Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node & dependencies
+node_modules/
+npm-debug.log*
+
+# Temporary files
+*.tmp

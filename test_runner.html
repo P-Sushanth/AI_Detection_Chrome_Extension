@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Content Detector - Phase 1 Benchmark & Test Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --accent-purple: #8b5cf6;
+      --accent-teal: #0d9488;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #090d16 0%, #0f172a 50%, #1e1b4b 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-teal));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .badge-tag {
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: var(--accent-purple);
+      padding: 0.35rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sample-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .sample-item {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .sample-item:hover {
+      border-color: rgba(139, 92, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .sample-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+
+    .sample-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .score-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .score-low {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: var(--accent-emerald);
+    }
+
+    .score-mod {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: var(--accent-amber);
+    }
+
+    .score-high {
+      background: rgba(139, 92, 246, 0.25);
+      border: 1px solid rgba(139, 92, 246, 0.5);
+      color: #c084fc;
+    }
+
+    .sample-preview {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .metrics-row {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* Playground Styling */
+    textarea {
+      width: 100%;
+      height: 180px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1rem;
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      border-color: var(--accent-purple);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-teal));
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: scale(0.99);
+    }
+
+    .gauge-container {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+    }
+
+    .gauge-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 0.4s ease, background-color 0.4s ease;
+    }
+
+    .signals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .signal-box {
+      background: rgba(30, 41, 59, 0.5);
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.8rem;
+    }
+
+    .signal-name {
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .signal-val {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .phrases-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+    }
+
+    .phrase-tag {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: 'Fira Code', monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-icon">🤖</div>
+        <div>
+          <h1>AI Content Detector Engine</h1>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Phase 1 Core Engine & Benchmark Suite</p>
+        </div>
+      </div>
+      <div class="badge-tag">Target: &lt; 15ms Execution</div>
+    </header>
+
+    <div class="grid">
+      <!-- Benchmark Pre-Loaded Samples -->
+      <div class="card">
+        <div class="card-title">
+          <span>Benchmark Suite</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="benchmarkSummary">Running...</span>
+        </div>
+        <div class="sample-list" id="sampleList">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Live Playground -->
+      <div class="card">
+        <div class="card-title">
+          <span>Live Playground</span>
+          <span style="font-size: 0.8rem; color: var(--accent-emerald);" id="liveSpeed">—</span>
+        </div>
+
+        <textarea id="playgroundInput" placeholder="Paste any article paragraph or search snippet here to test live AI percentage detection..."></textarea>
+        
+        <button class="btn" id="analyzeBtn">Analyze Text</button>
+
+        <div class="gauge-container">
+          <div class="gauge-header">
+            <span>Estimated AI Percentage</span>
+            <span id="scoreLabelText">0% AI (Low)</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="scoreFill"></div>
+          </div>
+
+          <div class="signals-grid">
+            <div class="signal-box">
+              <div class="signal-name">Lexical Marker Score</div>
+              <div class="signal-val" id="sigLexical">0 / 100</div>
+            </div>
+            <div class="signal-box">
+              <div class="signal-name">Burstiness (Sentence Variance)</div>
+              <div class="signal-val" id="sigBurstiness">0 / 100</div>
+            </div>
+            <div class="signal-box">
+              <div class="signal-name">Vocabulary Richness (TTR)</div>
+              <div class="signal-val" id="sigVocabulary">0 / 100</div>
+            </div>
+            <div class="signal-box">
+              <div class="signal-name">Structural Cadence</div>
+              <div class="signal-val" id="sigStructure">0 / 100</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1rem;">
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">Top AI Phrases Detected:</div>
+            <div class="phrases-list" id="phrasesContainer">
+              <span style="font-size: 0.8rem; color: var(--text-muted);">None detected</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="detector.js"></script>
+  <script>
+    const SAMPLES = [
+      {
+        id: 'sample-human',
+        name: 'Human Academic Paper',
+        expected: 'Low AI (< 25%)',
+        text: 'The solar nebula hypothesis describes the formation of our solar system from a dense cloud of interstellar gas and dust roughly 4.6 billion years ago. As gravity collapsed the nebula, angular momentum forced the cloud into a protoplanetary disk. Planets accreted from planetesimals over millions of years through chaotic collisions.'
+      },
+      {
+        id: 'sample-chatgpt',
+        name: 'ChatGPT-4 Essay Response',
+        expected: 'High AI (> 70%)',
+        text: 'In the ever-evolving landscape of modern technology, artificial intelligence serves as a testament to human ingenuity. It is worth noting that AI plays a crucial role in unlocking the potential of complex data sets. Furthermore, as we delve into the rich tapestry of digital transformation, it becomes of paramount importance to foster a holistic approach.'
+      },
+      {
+        id: 'sample-claude',
+        name: 'Claude 3.5 Synthesis',
+        expected: 'High AI (> 65%)',
+        text: 'To summarize, navigating the complexities of renewable energy integration requires a multifaceted solution. Moreover, it is crucial to understand that smart grids serve as a cornerstone for future grid stability. Consequently, stakeholders must leverage the power of distributed energy resources.'
+      },
+      {
+        id: 'sample-hybrid',
+        name: 'Hybrid Blog Post Snippet',
+        expected: 'Moderate AI (35 - 60%)',
+        text: 'Building a Chrome Extension is easier than ever with Manifest V3. However, developers must navigate the complexities of background service workers and asynchronous chrome.storage APIs to achieve peak performance.'
+      }
+    ];
+
+    function runBenchmarkSuite() {
+      const listContainer = document.getElementById('sampleList');
+      listContainer.innerHTML = '';
+      let totalTime = 0;
+
+      SAMPLES.forEach(sample => {
+        const result = AIDetector.analyze(sample.text);
+        totalTime += result.executionTimeMs;
+
+        let badgeClass = 'score-low';
+        if (result.score >= 65) badgeClass = 'score-high';
+        else if (result.score >= 31) badgeClass = 'score-mod';
+
+        const item = document.createElement('div');
+        item.className = 'sample-item';
+        item.innerHTML = `
+          <div class="sample-header">
+            <span class="sample-name">${sample.name}</span>
+            <span class="score-badge ${badgeClass}">🤖 ${result.score}% AI (${result.label})</span>
+          </div>
+          <div class="sample-preview">"${sample.text}"</div>
+          <div class="metrics-row">
+            <span>Expected: ${sample.expected}</span>
+            <span>Speed: ${result.executionTimeMs}ms</span>
+            <span>Words: ${result.wordCount}</span>
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          document.getElementById('playgroundInput').value = sample.text;
+          analyzeCurrentText();
+        });
+
+        listContainer.appendChild(item);
+      });
+
+      const avgSpeed = (totalTime / SAMPLES.length).toFixed(2);
+      document.getElementById('benchmarkSummary').textContent = `Avg Speed: ${avgSpeed}ms / test`;
+    }
+
+    function analyzeCurrentText() {
+      const text = document.getElementById('playgroundInput').value;
+      const res = AIDetector.analyze(text);
+
+      document.getElementById('liveSpeed').textContent = `Analyzed in ${res.executionTimeMs}ms`;
+      document.getElementById('scoreLabelText').textContent = `${res.score}% AI (${res.label})`;
+      
+      const fill = document.getElementById('scoreFill');
+      fill.style.width = `${res.score}%`;
+      
+      if (res.score >= 65) {
+        fill.style.backgroundColor = '#8b5cf6';
+      } else if (res.score >= 31) {
+        fill.style.backgroundColor = '#f59e0b';
+      } else {
+        fill.style.backgroundColor = '#10b981';
+      }
+
+      document.getElementById('sigLexical').textContent = `${res.signals.lexical.score} / 100`;
+      document.getElementById('sigBurstiness').textContent = `${res.signals.burstiness.score} / 100`;
+      document.getElementById('sigVocabulary').textContent = `${res.signals.vocabulary.score} / 100`;
+      document.getElementById('sigStructure').textContent = `${res.signals.structure.score} / 100`;
+
+      const phrasesBox = document.getElementById('phrasesContainer');
+      if (res.detectedPhrases && res.detectedPhrases.length > 0) {
+        phrasesBox.innerHTML = res.detectedPhrases.map(p => `<span class="phrase-tag">"${p}"</span>`).join(' ');
+      } else {
+        phrasesBox.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">None detected</span>';
+      }
+    }
+
+    document.getElementById('analyzeBtn').addEventListener('click', analyzeCurrentText);
+    document.getElementById('playgroundInput').addEventListener('input', analyzeCurrentText);
+
+    // Initial Load
+    runBenchmarkSuite();
+    // Default playground text
+    document.getElementById('playgroundInput').value = SAMPLES[1].text;
+    analyzeCurrentText();
+  </script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+/* AI Content Detector - Search Engine Stylesheet */
+
+/* Badge Styling */
+.ai-detector-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-left: 8px !important;
+  padding: 2px 7px !important;
+  border-radius: 12px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  line-height: 1.2 !important;
+  vertical-align: middle !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+}
+
+.ai-detector-badge:hover {
+  transform: translateY(-1px) scale(1.03) !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Color Themes */
+/* Low AI (0 - 30%) */
+.ai-badge-low {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  color: #047857 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Moderate AI (31 - 64%) */
+.ai-badge-moderate {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #b45309 !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+}
+
+/* High AI (65 - 100%) */
+.ai-badge-high {
+  background-color: rgba(139, 92, 246, 0.15) !important;
+  color: #6d28d9 !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+}
+
+/* Dark Theme Adjustments */
+@media (prefers-color-scheme: dark) {
+  .ai-badge-low {
+    background-color: rgba(16, 185, 129, 0.2) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+  }
+
+  .ai-badge-moderate {
+    background-color: rgba(245, 158, 11, 0.2) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+  }
+
+  .ai-badge-high {
+    background-color: rgba(139, 92, 246, 0.25) !important;
+    color: #c084fc !important;
+    border-color: rgba(139, 92, 246, 0.5) !important;
+  }
+}
+
+/* Floating Hover Tooltip Card */
+.ai-detector-tooltip {
+  position: fixed !important;
+  z-index: 2147483647 !important; /* Max z-index to stay above search DOM */
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  width: 260px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+  transform: translateY(6px) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.ai-detector-tooltip.visible {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+}
+
+.ai-tooltip-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 8px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+}
+
+.ai-tooltip-bar-bg {
+  width: 100% !important;
+  height: 6px !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-radius: 3px !important;
+  overflow: hidden !important;
+  margin-bottom: 10px !important;
+}
+
+.ai-tooltip-bar-fill {
+  height: 100% !important;
+  border-radius: 3px !important;
+  transition: width 0.3s ease !important;
+}
+
+.ai-tooltip-signals {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px !important;
+  margin-bottom: 8px !important;
+  font-size: 11px !important;
+}
+
+.ai-tooltip-signal-item {
+  background: rgba(255, 255, 255, 0.05) !important;
+  padding: 5px 8px !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.ai-tooltip-signal-lbl {
+  color: #94a3b8 !important;
+  font-size: 10px !important;
+}
+
+.ai-tooltip-signal-val {
+  font-weight: 700 !important;
+  color: #f1f5f9 !important;
+}
+
+.ai-tooltip-phrases {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  margin-top: 6px !important;
+}
+
+.ai-tooltip-phrase-tag {
+  background: rgba(244, 63, 94, 0.2) !important;
+  border: 1px solid rgba(244, 63, 94, 0.4) !important;
+  color: #fda4af !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-family: monospace !important;
+}
